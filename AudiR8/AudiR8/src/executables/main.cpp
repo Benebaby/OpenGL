@@ -123,7 +123,7 @@ int main(void)
 
 	//1=Phong 2=TexPhong 3=PBR 4=Normalmap 5=Reflective 6=skybox
 	Material red = Material(1, shaderID, glm::vec4(0.6f, 0.0f, 0.0f, 1.0f), glm::vec3(1.0f), glm::vec3(0.3), 20.0f);
-	Material clothes = Material(3, shaderID, myriamBasemap, myriamRoughmap, myriamNormalmap, glm::vec3(0.4), 20.0f);
+	Material clothes = Material(3, shaderID, myriamBasemap, myriamRoughmap, myriamNormalmap, glm::vec3(0.3), 20.0f);
 	Material cobble = Material(3, shaderID, cobblestoneBasemap, cobblestoneRoughmap, cobblestoneNormalmap, glm::vec3(0.3), 20.0f);
 	Material profil = Material(3, shaderID, reifenBasemap, reifenRoughmap, reifenNormalmap, glm::vec3(0.3), 20.0f);
 	Material sky = Material(6, shaderID, skybox);
@@ -159,7 +159,6 @@ int main(void)
 	float rpm = 10.0f;
 	glEnable(GL_DEPTH_TEST);
 	glfwSwapInterval(0);
-	std::cout << "let the loop begin :)" << std::endl;
 	while (!glfwWindowShouldClose(window))
 	{
 		angle = (float)glfwGetTime() * 3.141592f * rpm;
