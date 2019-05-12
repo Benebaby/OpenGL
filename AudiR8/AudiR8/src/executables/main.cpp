@@ -159,6 +159,7 @@ int main(void)
 	float rpm = 10.0f;
 	glEnable(GL_DEPTH_TEST);
 	glfwSwapInterval(0);
+	std::cout << "let the loop begin :)" << std::endl;
 	while (!glfwWindowShouldClose(window))
 	{
 		angle = (float)glfwGetTime() * 3.141592f * rpm;
