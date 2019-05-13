@@ -123,7 +123,7 @@ int main(void)
 
 	//1=Phong 2=TexPhong 3=PBR 4=Normalmap 5=Reflective 6=skybox
 	Material red = Material(1, shaderID, glm::vec4(0.6f, 0.0f, 0.0f, 1.0f), glm::vec3(1.0f), glm::vec3(0.3), 20.0f);
-	Material clothes = Material(3, shaderID, myriamBasemap, myriamRoughmap, myriamNormalmap, glm::vec3(0.3), 20.0f);
+	Material clothes = Material(2, shaderID, myriamBasemap, glm::vec3(0.15), glm::vec3(0.3), 20.0f);
 	Material cobble = Material(3, shaderID, cobblestoneBasemap, cobblestoneRoughmap, cobblestoneNormalmap, glm::vec3(0.3), 20.0f);
 	Material profil = Material(3, shaderID, reifenBasemap, reifenRoughmap, reifenNormalmap, glm::vec3(0.3), 20.0f);
 	Material sky = Material(6, shaderID, skybox);

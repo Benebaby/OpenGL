@@ -48,10 +48,12 @@ int main(void)
 	std::cout << glGetString(GL_VERSION) << std::endl;
 
 	glm::mat4 modelMatrix = glm::mat4(1.0f);
-	glm::mat4 susiMatrix = glm::translate(glm::rotate(glm::mat4(1.0f), glm::radians(-37.0f), glm::vec3(1.0f, 0.0f, 0.0f)), glm::vec3(0.0f, -0.65f, 0.0f));
-	glm::mat4 cubiMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, -2.0f));
+	glm::mat4 susiMatrix = glm::translate(glm::rotate(glm::mat4(1.0f), glm::radians(-37.0f), glm::vec3(1.0f, 0.0f, 0.0f)), glm::vec3(3.0f, -2.9f, 3.0f));
+	glm::mat4 dragonMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, -1.0f, 3.0f));
+	glm::mat4 cubiMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.0f, -3.0f));
+	glm::mat4 sphereMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, 0.0f, -3.0f));
 	glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), (float)width/height, 1.0f, 100.0f);
-	glm::vec4 light_pos(5.0f, 5.0f, 5.0f, 1.0f);
+	glm::vec4 light_pos(10.0f, 10.0f, 10.0f, 1.0f);
 	glm::vec3 light_col(1.0f);
 	glm::vec3 light_ambient(0.3f);
 	glm::vec3 mat_diffuse(1.0f, 0.0f, 0.0f);
@@ -91,10 +93,11 @@ int main(void)
 	GLuint ambientID = glGetUniformLocation(shaderProgram.getProgramID(), "light_ambient");
 
 	Mesh floor = Mesh("plane.obj");
-	Sphere sphere = Sphere(glm::vec3(-2.0, 0.0, -2.0), 1.0f, 200.0);
+	Sphere sphere = Sphere(1.0f, 200.0);
 	Cube cubi = Cube();
 	ScreenQuad quad = ScreenQuad();
 	Mesh susi = Mesh("suzanne.obj");
+	Mesh dragon = Mesh("Dragon_lowres.obj");
 
 	GLuint depthMapFBO;
 	glGenFramebuffers(1, &depthMapFBO);
@@ -143,8 +146,11 @@ int main(void)
 		cubi.render();
 		glUniformMatrix4fv(shadowModelID, 1, false, glm::value_ptr(susiMatrix));
 		susi.render();
-		glUniformMatrix4fv(shadowModelID, 1, false, glm::value_ptr(modelMatrix));
+		glUniformMatrix4fv(shadowModelID, 1, false, glm::value_ptr(sphereMatrix));
 		sphere.render();
+		glUniformMatrix4fv(shadowModelID, 1, false, glm::value_ptr(dragonMatrix));
+		dragon.render();
+		glUniformMatrix4fv(shadowModelID, 1, false, glm::value_ptr(modelMatrix));
 		floor.render();
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -179,8 +185,11 @@ int main(void)
 		cubi.render();
 		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(susiMatrix));
 		susi.render(); 
-		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(modelMatrix));
+		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(sphereMatrix));
 		sphere.render();
+		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(dragonMatrix));
+		dragon.render();
+		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(modelMatrix));
 
 		mat_diffuse = glm::vec3(0.0, 0.0, 1.0);
 		glUniform3fv(diffuseID, 1, glm::value_ptr(mat_diffuse));

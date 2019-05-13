@@ -24,7 +24,7 @@ uniform sampler2D depthMap;
 uniform samplerCube skybox;
 uniform samplerCube reflectionCube;
 
-vec3 light_color = vec3(0.9);
+vec3 light_color = vec3(0.8);
 float shadow = 0.0;
 
 out vec4 fragmentColor;
