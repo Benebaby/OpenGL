@@ -47,18 +47,18 @@ void main(){
 	float currentDepth = shadowCoord.z;
 	if(currentDepth < 1.0)
 	{
-		float bias = 0.00002 * tan(acos(cos_phi));
-		bias = clamp(bias, 0.001, 0.01);
+		float bias = 0.00001 * tan(acos(cos_phi));
+		bias = clamp(bias, 0.0001, 0.01);
 		vec2 texelSize = 1.0 / textureSize(depthMap, 0);
-		for(int x = -2; x <= 2; ++x)
+		for(int x = -1; x <= 1; ++x)
 		{
-			for(int y = -2; y <= 2; ++y)
+			for(int y = -1; y <= 1; ++y)
 			{
 				float pcfDepth = texture(depthMap, shadowCoord.xy + vec2(x, y) * texelSize).r; 
 				shadow += currentDepth - bias > pcfDepth ? 0.0 : 1.0;        
 			}    
 		}
-		shadow /= 25.0;
+		shadow /= 9.0;
 	}else
 		shadow = 1.0;
 

@@ -50,7 +50,7 @@ int main(void)
 	glm::mat4 modelMatrix = glm::mat4(1.0f);
 	glm::mat4 susiMatrix = glm::translate(glm::rotate(glm::mat4(1.0f), glm::radians(-37.0f), glm::vec3(1.0f, 0.0f, 0.0f)), glm::vec3(3.0f, -2.9f, 3.0f));
 	glm::mat4 dragonMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, -1.0f, 3.0f));
-	glm::mat4 cubiMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.0f, -3.0f));
+	glm::mat4 spiderMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, -3.0f));
 	glm::mat4 sphereMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, 0.0f, -3.0f));
 	glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), (float)width/height, 1.0f, 100.0f);
 	glm::vec4 light_pos(10.0f, 10.0f, 10.0f, 1.0f);
@@ -94,7 +94,7 @@ int main(void)
 
 	Mesh floor = Mesh("plane.obj");
 	Sphere sphere = Sphere(1.0f, 200.0);
-	Cube cubi = Cube();
+	Mesh spider = Mesh("spider.obj");
 	ScreenQuad quad = ScreenQuad();
 	Mesh susi = Mesh("suzanne.obj");
 	Mesh dragon = Mesh("Dragon_lowres.obj");
@@ -142,8 +142,8 @@ int main(void)
 			glUniformMatrix4fv(shadowProjectionID, 1, false, glm::value_ptr(lightOrthoProjectionMatrix));
 		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		glUniformMatrix4fv(shadowModelID, 1, false, glm::value_ptr(cubiMatrix));
-		cubi.render();
+		glUniformMatrix4fv(shadowModelID, 1, false, glm::value_ptr(spiderMatrix));
+		spider.render();
 		glUniformMatrix4fv(shadowModelID, 1, false, glm::value_ptr(susiMatrix));
 		susi.render();
 		glUniformMatrix4fv(shadowModelID, 1, false, glm::value_ptr(sphereMatrix));
@@ -181,8 +181,8 @@ int main(void)
 
 		mat_diffuse = glm::vec3(1.0, 0.0, 0.0);
 		glUniform3fv(diffuseID, 1, glm::value_ptr(mat_diffuse));
-		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(cubiMatrix));
-		cubi.render();
+		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(spiderMatrix));
+		spider.render();
 		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(susiMatrix));
 		susi.render(); 
 		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(sphereMatrix));
