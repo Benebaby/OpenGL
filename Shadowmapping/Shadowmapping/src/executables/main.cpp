@@ -9,6 +9,7 @@
 #include "Sphere.h"
 #include "ScreenQuad.h"
 #include "Mesh.h"
+#include "BezierSpline.h"
 
 const int width = 1600;
 const int height = 900;
@@ -44,16 +45,17 @@ int main(void)
 	glfwMakeContextCurrent(window);
 	glewInit();
 
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 	std::cout << glGetString(GL_VERSION) << std::endl;
 
 	glm::mat4 modelMatrix = glm::mat4(1.0f);
-	glm::mat4 susiMatrix = glm::translate(glm::rotate(glm::mat4(1.0f), glm::radians(-37.0f), glm::vec3(1.0f, 0.0f, 0.0f)), glm::vec3(3.0f, -2.9f, 3.0f));
+	glm::mat4 susiMatrix = glm::rotate(glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -0.51, -3.0f)), glm::radians(-37.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 	glm::mat4 dragonMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, -1.0f, 3.0f));
-	glm::mat4 spiderMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, -3.0f));
+	glm::mat4 spiderMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, 3.0f));
 	glm::mat4 sphereMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, 0.0f, -3.0f));
+	glm::mat4 lightsphereMatrix = glm::mat4(1.0);
 	glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), (float)width/height, 1.0f, 100.0f);
-	glm::vec4 light_pos(10.0f, 10.0f, 10.0f, 1.0f);
+	glm::vec4 light_pos(0.0f, 0.0f, 0.0f, 1.0f);
 	glm::vec3 light_col(1.0f);
 	glm::vec3 light_ambient(0.3f);
 	glm::vec3 mat_diffuse(1.0f, 0.0f, 0.0f);
@@ -61,7 +63,7 @@ int main(void)
 	float mat_shininess = 100.0f;
 
 	glm::mat4 lightViewMatrix = glm::lookAt(glm::vec3(light_pos.x, light_pos.y, light_pos.z), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 lightOrthoProjectionMatrix = glm::ortho(-5.0f, 5.0f, -5.f, 5.f, 1.0f, 100.0f);
+	glm::mat4 lightOrthoProjectionMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 100.0f);
 	glm::mat4 lightPerspProjectionMatrix = glm::perspective(glm::radians(90.0f), 1.0f, 1.0f, 100.0f);
 
 	const char* depthmapfiles[2] = { SHADERS_PATH"/depthmap.vert", SHADERS_PATH"/depthmap.frag" };
@@ -95,9 +97,16 @@ int main(void)
 	Mesh floor = Mesh("plane.obj");
 	Sphere sphere = Sphere(1.0f, 200.0);
 	Mesh spider = Mesh("spider.obj");
-	ScreenQuad quad = ScreenQuad();
+	Sphere lightsphere = Sphere(0.3, 50.0);
 	Mesh susi = Mesh("suzanne.obj");
 	Mesh dragon = Mesh("Dragon_lowres.obj");
+
+	BezierSpline lightpath = BezierSpline(glm::vec3(-8.0, 10.0, 0.0), glm::vec3(-8.0, 10.0, 12.8), glm::vec3(12.8, 10.0, 12.8));
+	lightpath.extend(glm::vec3(12.8, 10.0, 0.0));
+	lightpath.extend(glm::vec3(12.8, 10.0, -12.8));
+	lightpath.extend(glm::vec3(-8.0, 10.0, -12.8));
+	lightpath.extend(glm::vec3(-8.0, 10.0, 0.0));
+	lightpath.finalize();
 
 	GLuint depthMapFBO;
 	glGenFramebuffers(1, &depthMapFBO);
@@ -121,7 +130,7 @@ int main(void)
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glEnable(GL_DEPTH_TEST);
-	
+	float t = 0.0f;
 	while (!glfwWindowShouldClose(window))
 	{
 		cam.update();
@@ -131,6 +140,13 @@ int main(void)
 		if (glfwGetKey(window, GLFW_KEY_P)) {
 			light_pos.w = 1.0f;
 		}
+		if (t < 1.0f)
+			t += 0.001;
+		else
+			t = 0.0;
+		light_pos = glm::vec4(lightpath.deCasteljau(t), light_pos.w);
+		lightsphereMatrix = glm::translate(glm::mat4(1.0), lightpath.deCasteljau(t));
+		lightViewMatrix = glm::lookAt(glm::vec3(light_pos.x, light_pos.y, light_pos.z), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 		glViewport(0, 0, 4096, 4096);
 		shadowmapProgram.UseProgram();
@@ -194,6 +210,11 @@ int main(void)
 		mat_diffuse = glm::vec3(0.0, 0.0, 1.0);
 		glUniform3fv(diffuseID, 1, glm::value_ptr(mat_diffuse));
 		floor.render();
+
+		mat_diffuse = glm::vec3(3.3, 3.3, 3.3);
+		glUniform3fv(diffuseID, 1, glm::value_ptr(mat_diffuse));
+		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(lightsphereMatrix));
+		lightsphere.render();
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
