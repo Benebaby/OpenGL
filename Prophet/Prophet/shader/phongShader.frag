@@ -2,13 +2,14 @@
 
 in vec3 passPosition;
 in vec3 passNormal;
+in vec2 passTexCoords;
 
 uniform mat4 viewMatrix;
 uniform vec3 light_ambient;
+uniform sampler2D basemap;
 
 uniform struct
 {
-	vec3 diffuse;
 	vec3 specular;
 	float shininess;
 } mat;
@@ -23,6 +24,7 @@ out vec4 fragmentColor;
 
 void main(){
 	vec3 normal = normalize(passNormal);
+	vec4 diffuse = texture(basemap, passTexCoords);
 	vec3 lightVector;
 	// Diffuse
 	vec3 light_camcoord = (viewMatrix * light.pos).xyz;
@@ -36,5 +38,5 @@ void main(){
 	vec3 reflection = normalize( reflect( -lightVector, normal));
 	float cos_psi_n = pow( max( dot( reflection, eye), 0.0f), mat.shininess);
 
-	fragmentColor = vec4(mat.diffuse * light_ambient + (mat.diffuse * cos_phi + mat.specular * cos_psi_n) * light.col, 1.0f);
+	fragmentColor = vec4(diffuse.xyz * light_ambient + (diffuse.xyz * cos_phi + mat.specular * cos_psi_n) * light.col, 1.0f);
 }

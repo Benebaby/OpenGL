@@ -10,9 +10,11 @@ uniform mat4 projectionMatrix;
 
 out vec3 passNormal;
 out vec3 passPosition;
+out vec2 passTexCoords;
 
 void main(){
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * position;
 	passPosition = (viewMatrix * modelMatrix * position).xyz;
 	passNormal = normalize((transpose( inverse( viewMatrix * modelMatrix)) * vec4(normal, 0.0f)).xyz);
+	passTexCoords = texCoords;
 }
