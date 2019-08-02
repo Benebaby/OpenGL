@@ -35,8 +35,7 @@ void main(){
 		float normalsAligned = dot(calcN, passTBN[2]);
 		if(normalsAligned < 0){
 			mat3 TBN_CORRECT = passTBN;
-			tangent = -tangent;
-			TBN_CORRECT[0] = tangent;
+			TBN_CORRECT[0] = -tangent;
 			normal = normalize(TBN_CORRECT * normal);
 		} else {
 			normal = normalize(passTBN * normal);
@@ -60,7 +59,7 @@ void main(){
 
 	reflectedViewDir = (inverse(viewMatrix) * vec4(reflectedViewDir, 0.0)).xyz;
 
-	vec3 mixedDiffuse = mix(diffuse, texture(cubemap, reflectedViewDir).rgb, reflective * 0.9);
+	vec3 mixedDiffuse = mix(diffuse, texture(cubemap, reflectedViewDir).rgb, reflective);
 
 	fragmentColor = vec4(light_ambient * mixedDiffuse + (mixedDiffuse * cos_phi + specular * cos_psi_n) * light_col, 1.0);
 }

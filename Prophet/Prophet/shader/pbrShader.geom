@@ -32,19 +32,19 @@ void main() {
     vec3 normal = GetNormal();
 
     gl_Position = explode(gl_in[0].gl_Position, normal);
-	passPosition = PassPosition[0];
+	passPosition = explode(vec4(PassPosition[0], 0.0), normal).xyz;
 	passNormal = PassNormal[0];
 	passTBN = PassTBN[0];
 	passUV = PassUV[0]; 
     EmitVertex();
     gl_Position = explode(gl_in[1].gl_Position, normal);
-    passPosition = PassPosition[1];
+    passPosition = explode(vec4(PassPosition[1], 0.0), normal).xyz;
 	passNormal = PassNormal[1];
 	passTBN = PassTBN[1];
 	passUV = PassUV[1]; 
     EmitVertex();
     gl_Position = explode(gl_in[2].gl_Position, normal);
-    passPosition = PassPosition[2];
+	passPosition = explode(vec4(PassPosition[2], 0.0), normal).xyz;
 	passNormal = PassNormal[2];
 	passTBN = PassTBN[2];
 	passUV = PassUV[2]; 

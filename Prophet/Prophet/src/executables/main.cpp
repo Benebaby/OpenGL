@@ -45,7 +45,7 @@ int main(void)
 
 	glClearColor(0.81f, 0.94f, 1.0f, 1.0f);
 
-	glm::mat4 prophetMatrix = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0, -3.5, 0.0)), glm::vec3(0.3));
+	glm::mat4 prophetMatrix = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0, 0.0, 0.0)), glm::vec3(0.3));
 	glm::mat4 floorMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0, -3.5, 0.0));
 	cam.update();
 	glm::mat4 viewMatrix = cam.getViewMatrix();
@@ -124,6 +124,11 @@ int main(void)
 	GLuint glass_normalmap = TextureTools::loadTexture(TEXTURE_PATH "glass/normalmap.png", true);
 	GLuint glass_specular = TextureTools::loadTexture(TEXTURE_PATH "glass/specularmap.png", true);
 	GLuint glass_reflective = TextureTools::loadTexture(TEXTURE_PATH "glass/reflectionmap.png", true);
+
+	GLuint metal_basemap = TextureTools::loadTexture(TEXTURE_PATH "metal/basemap.png", false);
+	GLuint metal_normalmap = TextureTools::loadTexture(TEXTURE_PATH "metal/normalmap.png", false);
+	GLuint metal_specular = TextureTools::loadTexture(TEXTURE_PATH "metal/specularmap.png", false);
+	GLuint metal_reflective = TextureTools::loadTexture(TEXTURE_PATH "metal/reflectionmap.png", false);
 
 	std::vector<std::string> skyFaces = { "sky/right.jpg", "sky/left.jpg", "sky/top.jpg", "sky/bottom.jpg", "sky/front.jpg","sky/back.jpg" };
 	GLuint skyCubemap = TextureTools::loadCubemap(skyFaces);
@@ -230,6 +235,16 @@ int main(void)
 		glBindTexture(GL_TEXTURE_2D, glass_reflective);
 		glass.render();
 
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, metal_basemap);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, metal_normalmap);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, metal_specular);
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, metal_reflective);
+		plane.render();
+
 		phongShaderProgram.UseProgram();
 		glUniformMatrix4fv(phong_ViewID, 1, false, value_ptr(viewMatrix));
 		glUniformMatrix4fv(phong_ProjectionID, 1, false, value_ptr(projectionMatrix));
@@ -245,12 +260,12 @@ int main(void)
 		glUniform3fv(phong_MatSpecID, 1, value_ptr(matSpecular));
 		visorlights.render();
 
-		matDiffuse = glm::vec3(0.8, 0.0, 0.0);
+		/*matDiffuse = glm::vec3(0.8, 0.0, 0.0);
 		matSpecular = glm::vec3(1.0);
 		glUniformMatrix4fv(phong_ModelID, 1, false, value_ptr(floorMatrix));
 		glUniform3fv(phong_MatDifID, 1, value_ptr(matDiffuse));
 		glUniform3fv(phong_MatSpecID, 1, value_ptr(matSpecular));
-		plane.render();
+		plane.render();*/
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

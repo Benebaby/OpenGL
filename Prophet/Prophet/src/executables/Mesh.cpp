@@ -70,9 +70,7 @@ Mesh::Mesh(std::string filename)
 				m_tangents[i] = glm::normalize(-tangent);
 			else
 				m_tangents[i] = glm::normalize(tangent);
-
 		}
-
 
 		glBindBuffer(GL_ARRAY_BUFFER, m_vertexBufferHandle[3]);
 		glBufferData(GL_ARRAY_BUFFER, m_tangents.size() * sizeof(glm::vec3), m_tangents.data(), GL_STATIC_DRAW);
