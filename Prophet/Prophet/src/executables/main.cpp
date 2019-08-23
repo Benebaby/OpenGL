@@ -50,7 +50,7 @@ int main(void)
 	cam.update();
 	glm::mat4 viewMatrix = cam.getViewMatrix();
 	glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), (float)width / height, 0.1f, 50.0f);
-	glm::vec4 lightPos = glm::vec4(3.0, 5.0, 5.0, 1.0);
+	glm::vec4 lightpos = glm::vec4(6.0, 10.0, 10.0, 0.0);
 	glm::vec3 lightCol = glm::vec3(1.0);
 	glm::vec3 lightAmbient = glm::vec3(0.3);
 	glm::vec3 matDiffuse = glm::vec3(1.0, 0.0, 0.0);
@@ -139,12 +139,17 @@ int main(void)
 	glEnable(GL_DEPTH_TEST);
 	float time = -3.14159f/2.0f;
 	int isNormalmapUsed = 0;
+	float rotation = 0.0;
 	glfwSwapInterval(1);
 	while (!glfwWindowShouldClose(window))
 	{
-		if (glfwGetKey(window, GLFW_KEY_E) && time < 3.14159f / 2.0f) {
-			time += 0.001;
+		if (glfwGetKey(window, GLFW_KEY_E) ) {
+			time += 0.01;
 		}
+		rotation += 0.01;
+
+		glm::mat4 lightRotation = glm::rotate(glm::mat4(1.0), rotation, glm::vec3(0.0, 1.0, 0.0));
+		glm::vec4 lightPos = lightRotation * lightpos;
 
 		cam.update();
 		viewMatrix = cam.getViewMatrix();

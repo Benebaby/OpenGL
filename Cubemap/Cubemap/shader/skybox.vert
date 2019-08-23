@@ -9,6 +9,6 @@ out vec3 passTexCoord;
 
 void main(){
 	passTexCoord = position.xyz;
-	mat4 vM = mat4(mat3(viewMatrix));
+	mat4 vM = viewMatrix;
 	gl_Position = projectionMatrix * vM * position;
 }

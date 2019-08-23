@@ -48,7 +48,7 @@ int main()
 
 	glm::mat4 modelMatrix(1.0f);
 	glm::mat4 viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 projectionMatrix = glm::perspective(glm::radians(40.0f), (float)width / height, 0.01f, 100.0f);
+	glm::mat4 projectionMatrix = glm::perspective(glm::radians(40.0f), (float)width / height, 0.01f, 1000.0f);
 	glm::vec4 light(5.0, 5.0, 5.0, 0.0);
 
 	const char *skyshaderfiles[2] = { SHADERS_PATH"/skybox.vert", SHADERS_PATH"/skybox.frag" };
