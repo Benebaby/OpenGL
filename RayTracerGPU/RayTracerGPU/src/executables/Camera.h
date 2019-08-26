@@ -14,10 +14,10 @@ public:
 	void updateRadius(double yoffset);
 
 	float Pi = 3.141592f;
-	float radius = 5.0f;
-	glm::vec2 Angle = glm::vec2(0.0f, Pi / 2);
-	glm::vec2 Oldpos = glm::vec2(m_width / 2, m_height / 2);
-	glm::vec2 Newpos = glm::vec2(m_width / 2, m_height / 2);
+	float radius;
+	glm::vec2 Angle;
+	glm::vec2 Oldpos;
+	glm::vec2 Newpos;
 	int m_width;
 	int m_height;
 private:

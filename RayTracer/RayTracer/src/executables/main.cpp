@@ -7,7 +7,6 @@
 #include "../Tools/ShaderSet.h"
 #include "ScreenQuad.h"
 #include "Camera.h"
-#include "Texture.h"
 #include "Image.h"
 #include "Ray.h"
 #include "Intersection.h"
@@ -18,28 +17,21 @@
 const int width = 1600;
 const int height = 900;
 
-Camera cam = Camera(width, height);
+Camera* cam = new Camera(width, height);
 glm::vec3 light = glm::vec3(5.0f, 5.0f, 0.0f);
 Image* im;
 Scene scene = Scene();
 GLFWwindow* window;
 
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-	cam.radius -= (float)(yoffset * 0.1);
-	cam.radius = glm::max(cam.radius, 0.000001f);
+	cam->updateRadius(yoffset);
 }
 
 void MouseCallback(GLFWwindow* window, double xpos, double ypos) {
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-		cam.Newpos = glm::vec2(xpos, ypos);
-		float xAngle = (cam.Newpos.x - cam.Oldpos.x) / cam.m_width * 2 * cam.Pi;
-		float yAngle = (cam.Newpos.y - cam.Oldpos.y) / cam.m_height * cam.Pi;
-		cam.Angle -= glm::vec2(xAngle, yAngle);
-		cam.Angle.y = glm::max(cam.Angle.y, 0.000001f);
-		cam.Angle.y = glm::min(cam.Angle.y, cam.Pi);
-
-	}
-	cam.Oldpos = glm::vec2(xpos, ypos);
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+		cam->updateCamPos(xpos, ypos, true);
+	else
+		cam->updateCamPos(xpos, ypos, false);
 }
 
 glm::vec3 shade(Intersection h)
@@ -47,18 +39,18 @@ glm::vec3 shade(Intersection h)
 	glm::vec3 lightVec = glm::normalize(light - h.getHitPosition());
 	glm::vec3 normal = h.m_object->getNormal(h.m_ray, h.m_distance);
 	glm::vec3 reflectedLightVec = glm::reflect(-lightVec, normal);
-	glm::vec3 viewVec = glm::normalize(cam.getEye() - h.getHitPosition());
+	glm::vec3 viewVec = glm::normalize(cam->getEye() - h.getHitPosition());
 	float cosphi = glm::max(glm::dot(normal, lightVec), 0.0f);
 	float cospsi_n = glm::pow(glm::max(glm::dot(viewVec, reflectedLightVec), 0.0f), 50.0f);
 	return  0.2f * h.m_object->getColor() + (cosphi * h.m_object->getColor() + cospsi_n);
 }
 
-glm::vec3 trace(Ray ray, unsigned int level, unsigned int maxlevel) 
+glm::vec3 trace(Ray ray, unsigned int level, unsigned int maxlevel)
 {
 	glm::vec3 color = glm::vec3(0.0f);
 	Intersection hit = Intersection(ray, FLT_MAX, nullptr);
 	Ray reflectedRay;
-	if (scene.closestIntersection(&hit)) 
+	if (scene.closestIntersection(&hit))
 	{
 		color = shade(hit);
 		glm::vec3 lightDir = glm::normalize(light - hit.getHitPosition());
@@ -69,20 +61,20 @@ glm::vec3 trace(Ray ray, unsigned int level, unsigned int maxlevel)
 		if (level == maxlevel)
 			return color;
 		glm::vec3 normal = hit.m_object->getNormal(hit.m_ray, hit.m_distance);
-		reflectedRay = Ray(hit.getHitPosition() + 0.001f * normal,glm::reflect(hit.m_ray.m_dir, normal));
+		reflectedRay = Ray(hit.getHitPosition() + 0.001f * normal, glm::reflect(hit.m_ray.m_dir, normal));
 	}
 	else
 	{
 		return color;
 	}
 
-	return color + (1/(float) maxlevel * trace(reflectedRay, level+1, maxlevel));
+	return color + (1 / (float)maxlevel * trace(reflectedRay, level + 1, maxlevel));
 }
 
 void rayTraceImage()
 {
 	glm::vec3 from, xvec, yvec, zvec;
-	cam.getView(&xvec, &yvec, &zvec, &from);
+	cam->getView(&xvec, &yvec, &zvec, &from);
 	float w = (float)im->m_width;
 	float h = (float)im->m_height;
 
@@ -93,7 +85,7 @@ void rayTraceImage()
 	glm::vec3 steprightvec = xvec * (2.f * s_ / w);
 	glm::vec3 stepupvec = yvec * (2.f * s / h);
 
-	constexpr int antialiasingFactor = 2;
+	constexpr int antialiasingFactor = 1;
 	constexpr int antialiasing = antialiasingFactor * antialiasingFactor;
 	constexpr float antialiasingStep = 1.0f / antialiasingFactor;
 
@@ -105,9 +97,9 @@ void rayTraceImage()
 				float delta_y = a % antialiasingFactor * antialiasingStep + antialiasingStep / 2.0f;
 				glm::vec3 dir = (origin + (x + delta_x) * steprightvec + (y + delta_y) * stepupvec - from);
 				Ray ray = Ray(from, glm::normalize(dir));
-				color += trace(ray, 0, 2);
+				color += trace(ray, 0, 3);
 			}
-			im->set(x, y, color / (float) antialiasing);
+			im->set(x, y, color / (float)antialiasing);
 		}
 	}
 	im->upload();
@@ -147,7 +139,6 @@ int main(void)
 	{
 		deltaTime = glfwGetTime() - startTime;
 		startTime = glfwGetTime();
-		cam.update();
 		//angle += 0.5 * deltaTime;
 		lightmatrix = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
 		light = glm::vec3(lightmatrix * glm::vec4(5.0f, 5.0f, 0.0f, 1.0f));
@@ -156,7 +147,7 @@ int main(void)
 		rayTraceImage();
 		glBindTexture(GL_TEXTURE_2D, im->getID());
 		quad.render();
-		std::cout << deltaTime <<"\n";
+		std::cout << deltaTime << "\n";
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
