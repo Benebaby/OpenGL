@@ -1,21 +1,20 @@
 #pragma once
-#define INVALID_GL_VALUE 0xFFFFFFFF
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <vector>
 
 class Texture
 {
 private:
-	unsigned int m_textureID;
-	int m_width, m_height;
-	unsigned char* m_data = nullptr;
-	int m_bytesPerPixel;
-	void createTexture();
+	GLuint m_texture;
+	unsigned int m_width, m_height, m_bytesPerPixel;
 public:
-	Texture(int width, int height, int bytesPerPixel, unsigned char* data);
+	Texture(unsigned int width, unsigned int height, unsigned int bytesPerPixel);
+	unsigned int getWidth();
+	unsigned int getHeight();
 	~Texture();
-	void setTexture(int width, int height, int bytesPerPixel, unsigned char* data);
-	unsigned int getTexture();
+	GLuint getTextureID();
+	void bind2D();
 };
 

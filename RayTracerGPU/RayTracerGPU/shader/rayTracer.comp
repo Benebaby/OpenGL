@@ -1,0 +1,116 @@
+#version 430
+
+uniform vec4 lightPos;
+uniform vec3 from;
+uniform vec3 xvec;
+uniform vec3 yvec;
+uniform vec3 zvec;
+
+uniform ivec2 image_size;
+layout(rgba8) uniform image2D image;
+
+struct Sphere {vec3 position;float radius;};
+
+layout(std430, binding = 1) buffer spheres
+{
+    Sphere scene[];
+};
+
+layout (local_size_x = 32, local_size_y = 32) in;
+
+struct Ray { vec3 pos, dir; };
+
+float intersect_sphere(Sphere s, Ray r, float max){
+	vec3 m = s.position - r.pos; 
+	float b = dot(m, r.dir);
+	float mr2 = dot(m, m) - s.radius*s.radius; 
+	if ((mr2 >= 0) && (b <= 0)) return -1.0f; 
+	float disc = b*b - mr2; 
+	if (disc < 0.0f) return -1.0f; 
+	disc = sqrt(disc);
+	float t;
+	if (mr2 > 0) t = (b - disc); 
+	else t = (b + disc);  
+	if ((t < 0.001f) || (t > 2000000)) return -1.0f;
+	return t;
+}
+
+struct Hit { Ray ray; float t; int sphere; };
+
+Hit trace(Ray r, float max)
+{
+	Hit h;
+	h.ray = r;
+	h.t = max;
+	h.sphere = -1;
+	float closest = max;
+	for (int i=0; i<scene.length(); i++)
+	{
+		Sphere s = scene[i];
+		float temp = intersect_sphere(s, r, h.t);
+		if (temp >= 0.0f && temp < closest)
+		{
+			h.sphere = i;
+			h.t = temp;
+			closest = temp;
+		}
+	}
+	return h;
+}
+vec3 shade(Hit h)
+{
+	vec4 l = lightPos;
+	vec3 lightVector;
+	vec3 point = h.ray.pos + h.ray.dir * h.t;
+	if (l.w > 0.001f) lightVector = normalize(vec3(l) - point); 
+	else lightVector = normalize(vec3(l)); 
+	vec3 normal = normalize(point - scene[h.sphere].position);
+	float cos_phi = max(dot(normal, lightVector), 0.0f);
+	
+	float shaded = 1.0f;
+	Ray shadow;
+	shadow.dir = lightVector;
+	shadow.pos = point + lightVector * 0.0001;
+	Hit hit = trace ( shadow, distance(vec3(l), point) );
+	if ( hit.sphere >= 0 ) shaded = 0.3f;
+
+	return (cos_phi * 0.8f * shaded + 0.2f) * vec3(1.0f);
+}
+
+void main()
+{
+	int w = image_size.x;
+	int h = image_size.y;
+	ivec2 storePos = ivec2(gl_GlobalInvocationID.xy);
+	int x = storePos.x;
+	int y = storePos.y;	
+	
+	float s = tan(radians(0.5f * 40.f));
+	float s_ = s * w / h;
+	vec3 bottomleft = from - zvec - s*yvec - s_*xvec;
+	vec3 steprightvec = xvec * (2.f*s_ / w);
+	vec3 stepupvec = yvec * (2.f*s / h);
+	
+	vec3 color = vec3 ( 1.0f );
+	float delta = 0.5f;
+	vec3 dir = ( bottomleft + ( x + delta ) * steprightvec + ( y + delta ) * stepupvec - from );
+
+	Ray ray;
+	ray.pos = from;
+	ray.dir = normalize ( dir );
+	Hit hit = trace ( ray, 10000.0f );
+	if ( hit.sphere >= 0 ) color = shade ( hit );
+	
+	imageStore(image, storePos, vec4(color, 1.0f));
+}
+
+
+
+
+
+
+
+
+
+
+

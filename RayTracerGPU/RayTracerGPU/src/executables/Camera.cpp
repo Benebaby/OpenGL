@@ -1,7 +1,8 @@
 #include "Camera.h"
 
-Camera::Camera(int width, int height)
+Camera::Camera(int width, int height, float fov)
 {
+	m_fov = fov;
 	m_width = width;
 	m_height = height;
 	radius = 5.0f;
@@ -17,6 +18,11 @@ Camera::~Camera()
 glm::vec3 Camera::getEye()
 {
 	return eye;
+}
+
+float Camera::getFov()
+{
+	return m_fov;
 }
 
 void Camera::getView(glm::vec3* x, glm::vec3* y, glm::vec3* z, glm::vec3* pos) const
@@ -57,4 +63,9 @@ void Camera::updateRadius(double yoffset) {
 	eye.y = radius * cos(Angle.y);
 	eye.z = radius * sin(Angle.y) * cos(Angle.x);
 	m_viewMatrix = glm::lookAt(eye, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+}
+
+void Camera::setResolution(unsigned int w, unsigned int h) {
+	m_width = w;
+	m_height = h;
 }
