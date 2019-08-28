@@ -85,7 +85,7 @@ void initOpenGL() {
 	glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &data);
 	std::cout << "GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS: " << data << std::endl;
 	glGetIntegerv(GL_MAX_COMPUTE_SHARED_MEMORY_SIZE, &data);
-	std::cout << "GL_MAX_COMPUTE_SHARED_MEMORY_SIZE: " << data/1024 <<"KB"<< std::endl;
+	std::cout << "GL_MAX_COMPUTE_SHARED_MEMORY_SIZE: " << data / 1024 << "KB" << std::endl;
 }
 
 void rayTraceImage()
@@ -124,12 +124,12 @@ int main(void)
 	quad = new ScreenQuad();
 	image = new Texture(WIDTH, HEIGHT, 4);
 
-	Sphere s0 = Sphere(glm::vec3(0.0f, -101.0f, 0.0f), 100.f);
-	Sphere s1 = Sphere(glm::vec3(-0.5f, 0.0f, -0.5f), 1.0f);
-	Sphere s2 = Sphere(glm::vec3(0.5f, -.75f, 0.5f), 0.25f);
-	Sphere s3 = Sphere(glm::vec3(0.5f, -0.25f, 0.5f), 0.25f);
-	Sphere s4 = Sphere(glm::vec3(0.5f, 0.25f, 0.5f), 0.25f);
-	Sphere s5 = Sphere(glm::vec3(0.5f, 0.75f, 0.5f), 0.25f);
+	Sphere s0 = Sphere(glm::vec3(0.0f, -101.0f, 0.0f), 100.f, glm::vec3(0.0f, 0.0f, 1.0f));
+	Sphere s1 = Sphere(glm::vec3(-0.5f, 0.0f, -0.5f), 1.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+	Sphere s2 = Sphere(glm::vec3(0.5f, -.75f, 0.5f), 0.25f, glm::vec3(0.0f, 0.25f, 0.0f));
+	Sphere s3 = Sphere(glm::vec3(0.5f, -0.25f, 0.5f), 0.25f, glm::vec3(0.0f, 0.5f, 0.0f));
+	Sphere s4 = Sphere(glm::vec3(0.5f, 0.25f, 0.5f), 0.25f, glm::vec3(0.0f, 0.75f, 0.0f));
+	Sphere s5 = Sphere(glm::vec3(0.5f, 0.75f, 0.5f), 0.25f, glm::vec3(0.0f, 1.0f, 0.0f));
 	scene.push_back(s0);
 	scene.push_back(s1);
 	scene.push_back(s2);

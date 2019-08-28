@@ -9,7 +9,9 @@ uniform vec3 zvec;
 uniform ivec2 image_size;
 layout(rgba8) uniform image2D image;
 
-struct Sphere {vec3 position;float radius;};
+struct Sphere {vec3 position; float radius; vec3 color;};
+struct Ray { vec3 pos, dir; };
+struct Hit { Ray ray; float t; int sphere; };
 
 layout(std430, binding = 1) buffer spheres
 {
@@ -18,7 +20,6 @@ layout(std430, binding = 1) buffer spheres
 
 layout (local_size_x = 32, local_size_y = 32) in;
 
-struct Ray { vec3 pos, dir; };
 
 float intersect_sphere(Sphere s, Ray r, float max){
 	vec3 m = s.position - r.pos; 
@@ -34,8 +35,6 @@ float intersect_sphere(Sphere s, Ray r, float max){
 	if ((t < 0.001f) || (t > 2000000)) return -1.0f;
 	return t;
 }
-
-struct Hit { Ray ray; float t; int sphere; };
 
 Hit trace(Ray r, float max)
 {
@@ -74,7 +73,7 @@ vec3 shade(Hit h)
 	Hit hit = trace ( shadow, distance(vec3(l), point) );
 	if ( hit.sphere >= 0 ) shaded = 0.3f;
 
-	return (cos_phi * 0.8f * shaded + 0.2f) * vec3(1.0f);
+	return (cos_phi * 0.8f * shaded + 0.2f) * scene[h.sphere].color;
 }
 
 void main()
@@ -85,13 +84,13 @@ void main()
 	int x = storePos.x;
 	int y = storePos.y;	
 	
-	float s = tan(radians(0.5f * 40.f));
+	float s = tan(radians(0.5f * 45.f));
 	float s_ = s * w / h;
 	vec3 bottomleft = from - zvec - s*yvec - s_*xvec;
 	vec3 steprightvec = xvec * (2.f*s_ / w);
 	vec3 stepupvec = yvec * (2.f*s / h);
 	
-	vec3 color = vec3 ( 1.0f );
+	vec3 color = vec3 ( 0.0f );
 	float delta = 0.5f;
 	vec3 dir = ( bottomleft + ( x + delta ) * steprightvec + ( y + delta ) * stepupvec - from );
 
