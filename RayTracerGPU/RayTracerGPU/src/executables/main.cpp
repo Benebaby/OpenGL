@@ -19,7 +19,7 @@ ShaderSet* rayTracerProgram;
 ShaderSet* showImageProgram;
 ScreenQuad* quad;
 Texture* image;
-GLuint loc_from, loc_xvec, loc_yvec, loc_zvec, loc_lightPos, loc_image_size, loc_image, ssbo;
+GLuint loc_from, loc_xvec, loc_yvec, loc_zvec, loc_lightPos, loc_Eye, loc_image_size, loc_image, ssbo;
 glm::vec4 light = glm::vec4(5.0f, 5.0f, 5.0f, 1.0f);
 std::vector<Sphere> scene;
 
@@ -64,6 +64,7 @@ void initOpenGL() {
 	loc_yvec = glGetUniformLocation(rayTracerProgram->getProgramID(), "yvec");
 	loc_zvec = glGetUniformLocation(rayTracerProgram->getProgramID(), "zvec");
 	loc_lightPos = glGetUniformLocation(rayTracerProgram->getProgramID(), "lightPos");
+	loc_Eye = glGetUniformLocation(rayTracerProgram->getProgramID(), "eye");
 	loc_image_size = glGetUniformLocation(rayTracerProgram->getProgramID(), "image_size");
 	loc_image = glGetUniformLocation(rayTracerProgram->getProgramID(), "image");
 	glGenBuffers(1, &ssbo);
@@ -93,11 +94,13 @@ void rayTraceImage()
 	rayTracerProgram->UseProgram();
 	glm::vec3 from, xvec, yvec, zvec;
 	cam->getView(&xvec, &yvec, &zvec, &from);
+	glm::vec3 eye = cam->getEye();
 	glUniform3f(loc_from, from.x, from.y, from.z);
 	glUniform3f(loc_xvec, xvec.x, xvec.y, xvec.z);
 	glUniform3f(loc_yvec, yvec.x, yvec.y, yvec.z);
 	glUniform3f(loc_zvec, zvec.x, zvec.y, zvec.z);
 	glUniform4f(loc_lightPos, light.x, light.y, light.z, light.w);
+	glUniform3f(loc_Eye, eye.x, eye.y, eye.z);
 
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
 	glBufferData(GL_SHADER_STORAGE_BUFFER, scene.size() * sizeof(Sphere), scene.data(), GL_STATIC_DRAW);
@@ -125,17 +128,11 @@ int main(void)
 	image = new Texture(WIDTH, HEIGHT, 4);
 
 	Sphere s0 = Sphere(glm::vec3(0.0f, -101.0f, 0.0f), 100.f, glm::vec3(0.0f, 0.0f, 1.0f));
-	Sphere s1 = Sphere(glm::vec3(-0.5f, 0.0f, -0.5f), 1.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-	Sphere s2 = Sphere(glm::vec3(0.5f, -.75f, 0.5f), 0.25f, glm::vec3(0.0f, 0.25f, 0.0f));
-	Sphere s3 = Sphere(glm::vec3(0.5f, -0.25f, 0.5f), 0.25f, glm::vec3(0.0f, 0.5f, 0.0f));
-	Sphere s4 = Sphere(glm::vec3(0.5f, 0.25f, 0.5f), 0.25f, glm::vec3(0.0f, 0.75f, 0.0f));
-	Sphere s5 = Sphere(glm::vec3(0.5f, 0.75f, 0.5f), 0.25f, glm::vec3(0.0f, 1.0f, 0.0f));
+	Sphere s1 = Sphere(glm::vec3(-1.0f, 0.0f, -1.0f), 1.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+	Sphere s2 = Sphere(glm::vec3(1.0f, 0.0f, 1.0f), 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));
 	scene.push_back(s0);
 	scene.push_back(s1);
 	scene.push_back(s2);
-	scene.push_back(s3);
-	scene.push_back(s4);
-	scene.push_back(s5);
 
 	while (!glfwWindowShouldClose(window))
 	{

@@ -5,6 +5,7 @@ uniform vec3 from;
 uniform vec3 xvec;
 uniform vec3 yvec;
 uniform vec3 zvec;
+uniform vec3 eye;
 
 uniform ivec2 image_size;
 layout(rgba8) uniform image2D image;
@@ -12,6 +13,10 @@ layout(rgba8) uniform image2D image;
 struct Sphere {vec3 position; float radius; vec3 color;};
 struct Ray { vec3 pos, dir; };
 struct Hit { Ray ray; float t; int sphere; };
+
+Hit tempHit;
+Ray tempReflectedRay;
+bool rayhit = false;
 
 layout(std430, binding = 1) buffer spheres
 {
@@ -21,59 +26,111 @@ layout(std430, binding = 1) buffer spheres
 layout (local_size_x = 32, local_size_y = 32) in;
 
 
-float intersect_sphere(Sphere s, Ray r, float max){
-	vec3 m = s.position - r.pos; 
+float intersect_sphere(Sphere s, Ray r){
+	vec3 m = s.position - r.pos;
 	float b = dot(m, r.dir);
-	float mr2 = dot(m, m) - s.radius*s.radius; 
-	if ((mr2 >= 0) && (b <= 0)) return -1.0f; 
-	float disc = b*b - mr2; 
-	if (disc < 0.0f) return -1.0f; 
+	float mr2 = dot(m, m) - s.radius*s.radius;
+	if ((mr2 >= 0) && (b <= 0)) 
+		return -1.0f;
+	float disc = b*b - mr2;
+	if (disc < 0.0f) 
+		return -1.0f;
 	disc = sqrt(disc);
 	float t;
-	if (mr2 > 0) t = (b - disc); 
-	else t = (b + disc);  
-	if ((t < 0.001f) || (t > 2000000)) return -1.0f;
+	if (mr2 > 0) 
+		t = (b - disc);
+	else 
+		t = (b + disc);
+	if ((t < 0.001f) || (t > 100000.0f)) 
+		return -1.0f;
 	return t;
 }
 
-Hit trace(Ray r, float max)
+bool anyIntersection(Hit h)
 {
-	Hit h;
-	h.ray = r;
-	h.t = max;
-	h.sphere = -1;
-	float closest = max;
 	for (int i=0; i<scene.length(); i++)
 	{
 		Sphere s = scene[i];
-		float temp = intersect_sphere(s, r, h.t);
-		if (temp >= 0.0f && temp < closest)
+		float temp = intersect_sphere(s, h.ray);
+		if (temp >= 0.0f)
 		{
-			h.sphere = i;
-			h.t = temp;
-			closest = temp;
+			return true;
 		}
 	}
-	return h;
+	return false;
 }
+
+bool closestIntersection(Hit h)
+{
+	float nearestHit = 100000.0f;
+	bool isHit = false;
+	tempHit.sphere = -1;
+	tempHit.t = 100000.0f;
+	tempHit.ray = h.ray;
+	for (int i=0; i<scene.length(); i++)
+	{
+		Sphere s = scene[i];
+		float temp = intersect_sphere(s, h.ray);
+		if (temp >= 0.0f){
+			isHit = true;
+			if(temp < nearestHit){
+				tempHit.sphere = i;
+				tempHit.t = temp;
+				nearestHit = temp;
+			}
+		}
+	}
+	return isHit;
+}
+
 vec3 shade(Hit h)
 {
 	vec4 l = lightPos;
-	vec3 lightVector;
+	vec3 lightVec;
 	vec3 point = h.ray.pos + h.ray.dir * h.t;
-	if (l.w > 0.001f) lightVector = normalize(vec3(l) - point); 
-	else lightVector = normalize(vec3(l)); 
+	if (l.w > 0.001f)
+    lightVec = normalize(vec3(l) - point);
+	else
+    lightVec = normalize(vec3(l));
 	vec3 normal = normalize(point - scene[h.sphere].position);
-	float cos_phi = max(dot(normal, lightVector), 0.0f);
-	
-	float shaded = 1.0f;
-	Ray shadow;
-	shadow.dir = lightVector;
-	shadow.pos = point + lightVector * 0.0001;
-	Hit hit = trace ( shadow, distance(vec3(l), point) );
-	if ( hit.sphere >= 0 ) shaded = 0.3f;
+	vec3 reflectedLightVec = reflect(-lightVec, normal);
+	vec3 viewVec = normalize(eye - (h.ray.pos + h.ray.dir * h.t));
+	float cosphi = max(dot(normal, lightVec), 0.0f);
+	float cospsi_n = pow(max(dot(viewVec, reflectedLightVec), 0.0f), 50.0f);
+	return  0.2f * scene[h.sphere].color + (cosphi * scene[h.sphere].color + cospsi_n);
+}
 
-	return (cos_phi * 0.8f * shaded + 0.2f) * scene[h.sphere].color;
+vec3 trace(Ray ray){
+	vec3 color = vec3(0.0f);
+	Hit hit;
+	hit.ray = ray;
+	hit.t = 100000.0f;
+	hit.sphere = -1;
+	Ray reflectedRay;
+	if (closestIntersection(hit))
+	{
+		rayhit = true;
+		color = shade(tempHit);
+		vec3 lightDir = normalize(lightPos.xyz - (tempHit.ray.pos + tempHit.ray.dir * tempHit.t));
+		Ray shadowray;
+		shadowray.pos = (tempHit.ray.pos + tempHit.ray.dir * tempHit.t) + 0.001f * lightDir;
+		shadowray.dir =  lightDir;
+		Hit shadowhit;
+		shadowhit.ray = shadowray;
+		shadowhit.t =  100000.0f;
+		shadowhit.sphere = -1;
+		if (anyIntersection(shadowhit))
+			color = 0.2f * scene[tempHit.sphere].color;
+		vec3 point = tempHit.ray.pos + tempHit.ray.dir * tempHit.t;
+		vec3 normal = normalize(point - scene[tempHit.sphere].position);
+		tempReflectedRay.pos = (tempHit.ray.pos + tempHit.ray.dir * tempHit.t) + 0.001f * normal;
+		tempReflectedRay.dir = reflect(tempHit.ray.dir, normal);
+	}
+	else
+	{
+		return color;
+	}
+	return color;
 }
 
 void main()
@@ -82,34 +139,27 @@ void main()
 	int h = image_size.y;
 	ivec2 storePos = ivec2(gl_GlobalInvocationID.xy);
 	int x = storePos.x;
-	int y = storePos.y;	
-	
+	int y = storePos.y;
+
 	float s = tan(radians(0.5f * 45.f));
 	float s_ = s * w / h;
 	vec3 bottomleft = from - zvec - s*yvec - s_*xvec;
 	vec3 steprightvec = xvec * (2.f*s_ / w);
 	vec3 stepupvec = yvec * (2.f*s / h);
-	
-	vec3 color = vec3 ( 0.0f );
+
+	vec3 color = vec3(0.0f);
 	float delta = 0.5f;
 	vec3 dir = ( bottomleft + ( x + delta ) * steprightvec + ( y + delta ) * stepupvec - from );
 
 	Ray ray;
 	ray.pos = from;
 	ray.dir = normalize ( dir );
-	Hit hit = trace ( ray, 10000.0f );
-	if ( hit.sphere >= 0 ) color = shade ( hit );
+	color = trace(ray);
+	if(rayhit){
+		rayhit = false;
+		color += 0.5 * trace(tempReflectedRay);
+	}
 	
+
 	imageStore(image, storePos, vec4(color, 1.0f));
 }
-
-
-
-
-
-
-
-
-
-
-

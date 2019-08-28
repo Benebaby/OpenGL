@@ -8,10 +8,7 @@ Camera::Camera(int width, int height, float fov)
 	radius = 5.0f;
 	Angle = glm::vec2(0.0f, Pi / 2);
 	Oldpos = glm::vec2(m_width / 2, m_height / 2);
-	eye.x = radius * sin(Angle.y) * sin(Angle.x);
-	eye.y = radius * cos(Angle.y);
-	eye.z = radius * sin(Angle.y) * cos(Angle.x);
-	m_viewMatrix = glm::lookAt(eye, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+	updateMatrix();
 }
 
 
@@ -52,24 +49,23 @@ void Camera::updateCamPos(double xpos, double ypos, bool active) {
 	else {
 		Oldpos = glm::vec2(xpos, ypos);
 	}
-
-	eye.x = radius * sin(Angle.y) * sin(Angle.x);
-	eye.y = radius * cos(Angle.y);
-	eye.z = radius * sin(Angle.y) * cos(Angle.x);
-	m_viewMatrix = glm::lookAt(eye, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+	updateMatrix();
 }
 
 void Camera::updateRadius(double yoffset) {
 	radius -= (float)(yoffset * 0.1);
 	radius = glm::max(radius, 0.000001f);
-
-	eye.x = radius * sin(Angle.y) * sin(Angle.x);
-	eye.y = radius * cos(Angle.y);
-	eye.z = radius * sin(Angle.y) * cos(Angle.x);
-	m_viewMatrix = glm::lookAt(eye, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+	updateMatrix();
 }
 
 void Camera::setResolution(unsigned int w, unsigned int h) {
 	m_width = w;
 	m_height = h;
+}
+
+void Camera::updateMatrix() {
+	eye.x = radius * sin(Angle.y) * sin(Angle.x);
+	eye.y = radius * cos(Angle.y);
+	eye.z = radius * sin(Angle.y) * cos(Angle.x);
+	m_viewMatrix = glm::lookAt(eye, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
 }

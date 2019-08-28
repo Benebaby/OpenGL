@@ -23,6 +23,7 @@ public:
 	int m_width;
 	int m_height;
 private:
+	void updateMatrix();
 	float m_fov;
 	glm::mat4 m_viewMatrix;
 	glm::vec3 eye;
