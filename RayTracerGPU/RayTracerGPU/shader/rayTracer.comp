@@ -52,7 +52,7 @@ bool anyIntersection(Hit h)
 	{
 		Sphere s = scene[i];
 		float temp = intersect_sphere(s, h.ray);
-		if (temp >= 0.0f)
+		if (temp >= 0.0f && temp < 5.0f)
 		{
 			return true;
 		}

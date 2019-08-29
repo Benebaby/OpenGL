@@ -127,12 +127,20 @@ int main(void)
 	quad = new ScreenQuad();
 	image = new Texture(WIDTH, HEIGHT, 4);
 
-	Sphere s0 = Sphere(glm::vec3(0.0f, -101.0f, 0.0f), 100.f, glm::vec3(0.0f, 0.0f, 1.0f));
-	Sphere s1 = Sphere(glm::vec3(-1.0f, 0.0f, -1.0f), 1.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-	Sphere s2 = Sphere(glm::vec3(1.0f, 0.0f, 1.0f), 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));
+	Sphere s0 = Sphere(glm::vec3(0.0f, -1001.0f, 0.0f), 1000.f, glm::vec3(0.0f, 0.0f, 1.0f));
+	Sphere s1 = Sphere(glm::vec3(-1.0f, 0.0f, 0.0f), 1.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+	Sphere s2 = Sphere(glm::vec3(1.0f, 0.0f, 0.0f), 0.5f, glm::vec3(0.0f, 1.0f, 0.0f));
+	Sphere s3 = Sphere(glm::vec3(-1010.0f, 9.0f, 0.0f), 1000.f, glm::vec3(1.0f, 1.0f, 0.0f));
+	Sphere s4 = Sphere(glm::vec3(1010.0f, 9.0f, 0.0f), 1000.f, glm::vec3(0.0f, 1.0f, 1.0f));
+	Sphere s5 = Sphere(glm::vec3(0.0f, 9.0f, 1010.0f), 1000.f, glm::vec3(1.0f, 0.0f, 1.0f));
+	Sphere s6 = Sphere(glm::vec3(0.0f, 9.0f, -1010.0f), 1000.f, glm::vec3(1.0f, 0.5f, 0.0f));
 	scene.push_back(s0);
 	scene.push_back(s1);
 	scene.push_back(s2);
+	scene.push_back(s3);
+	scene.push_back(s4);
+	scene.push_back(s5);
+	scene.push_back(s6);
 
 	while (!glfwWindowShouldClose(window))
 	{
