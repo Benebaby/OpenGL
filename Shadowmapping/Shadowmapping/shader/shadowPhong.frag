@@ -47,7 +47,7 @@ void main(){
 	float currentDepth = shadowCoord.z;
 	if(currentDepth < 1.0)
 	{
-		float bias = 0.00001 * tan(acos(cos_phi));
+		float bias = 0.0001 * tan(acos(cos_phi));
 		bias = clamp(bias, 0.0002, 0.01);
 		vec2 texelSize = 1.0 / textureSize(depthMap, 0);
 		for(int x = -1; x <= 1; ++x)

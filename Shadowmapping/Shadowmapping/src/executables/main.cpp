@@ -11,8 +11,8 @@
 #include "Mesh.h"
 #include "BezierSpline.h"
 
-const int width = 1600;
-const int height = 900;
+const int width = 1778;
+const int height = 1000;
 Camera cam = Camera(width, height);
 GLFWwindow* window;
 
@@ -39,7 +39,7 @@ int main(void)
 {
 	glfwInit();
 	GLFWwindow* window = glfwCreateWindow(width, height, "Shadowmapping", NULL, NULL);
-	glfwSetWindowPos(window, 150, 90);
+	glfwSetWindowPos(window, 71, 35);
 	glfwSetCursorPosCallback(window, &MouseCallback);
 	glfwSetScrollCallback(window, &ScrollCallback);
 	glfwMakeContextCurrent(window);
@@ -53,7 +53,7 @@ int main(void)
 	glm::mat4 dragonMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, -1.0f, 3.0f));
 	glm::mat4 spiderMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, -1.0f, 3.0f));
 	glm::mat4 sphereMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-3.0f, 0.0f, -3.0f));
-	glm::mat4 lightsphereMatrix = glm::mat4(1.0);
+	glm::mat4 lampMatrix = glm::mat4(1.0);
 	glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), (float)width/height, 1.0f, 100.0f);
 	glm::vec4 light_pos(0.0f, 0.0f, 0.0f, 1.0f);
 	glm::vec3 light_col(1.0f);
@@ -63,7 +63,7 @@ int main(void)
 	float mat_shininess = 100.0f;
 
 	glm::mat4 lightViewMatrix = glm::lookAt(glm::vec3(light_pos.x, light_pos.y, light_pos.z), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 lightOrthoProjectionMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 100.0f);
+	glm::mat4 lightOrthoProjectionMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 100.0f);
 	glm::mat4 lightPerspProjectionMatrix = glm::perspective(glm::radians(90.0f), 1.0f, 1.0f, 100.0f);
 
 	const char* depthmapfiles[2] = { SHADERS_PATH"/depthmap.vert", SHADERS_PATH"/depthmap.frag" };
@@ -97,9 +97,10 @@ int main(void)
 	Mesh floor = Mesh("plane.obj");
 	Sphere sphere = Sphere(1.0f, 200.0);
 	Mesh spider = Mesh("spider.obj");
-	Sphere lightsphere = Sphere(0.3, 50.0);
+	Mesh lamp = Mesh("PointLamp.obj");
 	Mesh susi = Mesh("suzanne.obj");
 	Mesh dragon = Mesh("Dragon_lowres.obj");
+	ScreenQuad quad = ScreenQuad();
 
 	BezierSpline lightpath = BezierSpline(glm::vec3(-8.0, 10.0, 0.0), glm::vec3(-8.0, 10.0, 12.8), glm::vec3(12.8, 10.0, 12.8));
 	lightpath.extend(glm::vec3(12.8, 10.0, 0.0));
@@ -130,7 +131,9 @@ int main(void)
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glEnable(GL_DEPTH_TEST);
+	glfwSwapInterval(1);
 	float t = 0.0f;
+	bool renderDepth = false;
 	while (!glfwWindowShouldClose(window))
 	{
 		cam.update();
@@ -140,19 +143,24 @@ int main(void)
 		if (glfwGetKey(window, GLFW_KEY_P)) {
 			light_pos.w = 1.0f;
 		}
+		if (glfwGetKey(window, GLFW_KEY_I)) {
+			renderDepth = true;
+		}
+		if (glfwGetKey(window, GLFW_KEY_U)) {
+			renderDepth = false;
+		}
 		if (t < 1.0f)
 			t += 0.001;
 		else
 			t = 0.0;
 		light_pos = glm::vec4(lightpath.deCasteljau(t), light_pos.w);
-		lightsphereMatrix = glm::translate(glm::mat4(1.0), lightpath.deCasteljau(t));
+		lampMatrix = glm::scale(glm::translate(glm::mat4(1.0), lightpath.deCasteljau(t)), glm::vec3(4.0f));
 		lightViewMatrix = glm::lookAt(glm::vec3(light_pos.x, light_pos.y, light_pos.z), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
 		glViewport(0, 0, 4096, 4096);
 		shadowmapProgram.UseProgram();
 		glUniformMatrix4fv(shadowModelID, 1, false, glm::value_ptr(modelMatrix));
 		glUniformMatrix4fv(shadowViewID, 1, false, glm::value_ptr(lightViewMatrix));
-		if(light_pos.w > 0.1)
+		if (light_pos.w > 0.1)
 			glUniformMatrix4fv(shadowProjectionID, 1, false, glm::value_ptr(lightPerspProjectionMatrix));
 		else
 			glUniformMatrix4fv(shadowProjectionID, 1, false, glm::value_ptr(lightOrthoProjectionMatrix));
@@ -170,51 +178,61 @@ int main(void)
 		floor.render();
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//depthmapProgram.UseProgram();
-		//glActiveTexture(GL_TEXTURE0);
-		//glBindTexture(GL_TEXTURE_2D, depthMap);
-		//quad.render();
+		if (renderDepth) {
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glfwSetWindowSize(window, 1000, 1000);
+			glfwSetWindowPos(window, 460, 35);
+			glViewport(0, 0, 1000, 1000);
+			depthmapProgram.UseProgram();
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, depthMap);
+			quad.render();
+		}
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glViewport(0, 0, width, height);
-		shaderProgram.UseProgram();
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, depthMap);
-		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(modelMatrix));
-		glUniformMatrix4fv(viewID, 1, false, glm::value_ptr(cam.getViewMatrix()));
-		glUniformMatrix4fv(lightViewID, 1, false, glm::value_ptr(lightViewMatrix));
-		if (light_pos.w > 0.1)
-			glUniformMatrix4fv(lightProjectionID, 1, false, glm::value_ptr(lightPerspProjectionMatrix));
-		else
-			glUniformMatrix4fv(lightProjectionID, 1, false, glm::value_ptr(lightOrthoProjectionMatrix));
-		glUniformMatrix4fv(projectionID, 1, false, glm::value_ptr(projectionMatrix));
-		glUniform4fv(lightID, 1, glm::value_ptr(light_pos));
-		glUniform3fv(lightcolorID, 1, glm::value_ptr(light_col));
-		glUniform3fv(ambientID, 1, glm::value_ptr(light_ambient));
-		glUniform3fv(specularID, 1, glm::value_ptr(mat_specular));
-		glUniform1f(shininessID, mat_shininess);
+		if (!renderDepth) {
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glfwSetWindowSize(window, width, height);
+			glViewport(0, 0, width, height);
+			glfwSetWindowPos(window, 71, 35);
+			shaderProgram.UseProgram();
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, depthMap);
+			glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(modelMatrix));
+			glUniformMatrix4fv(viewID, 1, false, glm::value_ptr(cam.getViewMatrix()));
+			glUniformMatrix4fv(lightViewID, 1, false, glm::value_ptr(lightViewMatrix));
+			if (light_pos.w > 0.1)
+				glUniformMatrix4fv(lightProjectionID, 1, false, glm::value_ptr(lightPerspProjectionMatrix));
+			else
+				glUniformMatrix4fv(lightProjectionID, 1, false, glm::value_ptr(lightOrthoProjectionMatrix));
+			glUniformMatrix4fv(projectionID, 1, false, glm::value_ptr(projectionMatrix));
+			glUniform4fv(lightID, 1, glm::value_ptr(light_pos));
+			glUniform3fv(lightcolorID, 1, glm::value_ptr(light_col));
+			glUniform3fv(ambientID, 1, glm::value_ptr(light_ambient));
+			glUniform3fv(specularID, 1, glm::value_ptr(mat_specular));
+			glUniform1f(shininessID, mat_shininess);
 
-		mat_diffuse = glm::vec3(1.0, 0.0, 0.0);
-		glUniform3fv(diffuseID, 1, glm::value_ptr(mat_diffuse));
-		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(spiderMatrix));
-		spider.render();
-		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(susiMatrix));
-		susi.render(); 
-		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(sphereMatrix));
-		sphere.render();
-		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(dragonMatrix));
-		dragon.render();
-		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(modelMatrix));
+			mat_diffuse = glm::vec3(1.0, 0.0, 0.0);
+			glUniform3fv(diffuseID, 1, glm::value_ptr(mat_diffuse));
+			glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(spiderMatrix));
+			spider.render();
+			glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(susiMatrix));
+			susi.render();
+			glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(sphereMatrix));
+			sphere.render();
+			glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(dragonMatrix));
+			dragon.render();
+			glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(modelMatrix));
 
-		mat_diffuse = glm::vec3(0.0, 0.0, 1.0);
-		glUniform3fv(diffuseID, 1, glm::value_ptr(mat_diffuse));
-		floor.render();
 
-		mat_diffuse = glm::vec3(3.3, 3.3, 3.3);
-		glUniform3fv(diffuseID, 1, glm::value_ptr(mat_diffuse));
-		glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(lightsphereMatrix));
-		lightsphere.render();
+			mat_diffuse = glm::vec3(0.0, 0.0, 1.0);
+			glUniform3fv(diffuseID, 1, glm::value_ptr(mat_diffuse));
+			floor.render();
+
+			mat_diffuse = glm::vec3(3.3, 3.3, 3.3);
+			glUniform3fv(diffuseID, 1, glm::value_ptr(mat_diffuse));
+			glUniformMatrix4fv(modelID, 1, false, glm::value_ptr(lampMatrix));
+			lamp.render();
+		}
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
