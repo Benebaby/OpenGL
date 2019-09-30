@@ -1,4 +1,4 @@
-#version 430
+#version 440
 
 uniform vec4 lightPos;
 uniform vec3 from;
@@ -6,21 +6,36 @@ uniform vec3 xvec;
 uniform vec3 yvec;
 uniform vec3 zvec;
 uniform vec3 eye;
-
+uniform float fov;
 uniform ivec2 image_size;
+uniform sampler2D texture1;
+uniform sampler2D texture2;
+
+struct Sphere {vec3 position; int matID; mat3 rotation; float radius;};
+struct Triangle {vec3 A; vec3 u; vec3 v; vec3 normal; int matID;};
+struct Box {vec3 A; int matID; vec3 B;};
+struct Material{vec4 diffuse; vec3 specular; float shininess; int textureIndex; int materialType;};
+struct Ray {vec3 pos, dir;};
+struct Hit {bool isHit; bool isEnter; Ray ray; float t; int object; int id; vec3 normal; vec2 texCoords; vec3 color;};
+//object: 1 = sphere, 2 = triangle
+
 layout(rgba8) uniform image2D image;
 
-struct Sphere {vec3 position; float radius; vec3 color;};
-struct Ray { vec3 pos, dir; };
-struct Hit { Ray ray; float t; int sphere; };
-
-Hit tempHit;
-Ray tempReflectedRay;
-bool rayhit = false;
-
-layout(std430, binding = 1) buffer spheres
+layout(std430, binding = 1) readonly buffer spheres
 {
-    Sphere scene[];
+    Sphere sceneS[];
+};
+layout(std430, binding = 2) readonly buffer triangles
+{
+    Triangle sceneT[];
+};
+layout(std430, binding = 3) readonly buffer boxes
+{
+    Box sceneB[];
+};
+layout(std430, binding = 4) readonly buffer mats
+{
+    Material materials[];
 };
 
 layout (local_size_x = 32, local_size_y = 32) in;
@@ -41,46 +56,248 @@ float intersect_sphere(Sphere s, Ray r){
 		t = (b - disc);
 	else 
 		t = (b + disc);
-	if ((t < 0.001f) || (t > 100000.0f)) 
+	if ((t < 0.0001f) || (t > 100000.0f)) 
 		return -1.0f;
 	return t;
 }
 
-bool anyIntersection(Hit h)
-{
-	for (int i=0; i<scene.length(); i++)
-	{
-		Sphere s = scene[i];
-		float temp = intersect_sphere(s, h.ray);
-		if (temp >= 0.0f && temp < 5.0f)
-		{
-			return true;
-		}
-	}
-	return false;
+float intersect_triangle(Triangle tri, Ray r){ 
+	vec3 dir = r.dir;
+	vec3 d_v = cross(dir, tri.v);
+	float det = dot(d_v, tri.u);
+	if (abs(det) < 0.0001f)
+		return -1.0f;
+	float invDet = 1.0f / det;
+	vec3 P = r.pos;
+	vec3 w = P - tri.A;
+	float s = dot(d_v, w) * invDet;
+	if (s < 0.f || s > 1.f)
+		return -1.0f;
+	vec3 w_u = cross( w, tri.u);
+	float t = dot(w_u, dir) * invDet;
+	if (t < 0.f || s + t > 1.f)
+		return -1.0f;
+	float l = dot( w_u, tri.v) * invDet;
+	if ((l < 0.f) || (l > 100000.0f))
+		return -1.0f;
+	return l;
 }
 
-bool closestIntersection(Hit h)
+float intersect_box(Box box, Ray r){ 
+    float tmin, tmax, tymin, tymax, tzmin, tzmax; 
+	vec3 bounds[2];
+	bounds[0] = box.A;
+	bounds[1] = box.B;
+	vec3 invdir = 1 / r.dir;
+    tmin = (bounds[(invdir.x < 0)? 1 : 0].x - r.pos.x) * invdir.x; 
+    tmax = (bounds[(invdir.x < 0)? 0 : 1].x - r.pos.x) * invdir.x; 
+    tymin =(bounds[(invdir.y < 0)? 1 : 0].y - r.pos.y) * invdir.y; 
+    tymax =(bounds[(invdir.y < 0)? 0 : 1].y - r.pos.y) * invdir.y; 
+	if ((tmin > tymax) || (tymin > tmax)) 
+        return -1.0f; 
+    if (tymin > tmin) 
+        tmin = tymin; 
+    if (tymax < tmax) 
+        tmax = tymax; 
+	tzmin = (bounds[(invdir.z < 0)? 1 : 0].z - r.pos.z) * invdir.z; 
+    tzmax = (bounds[(invdir.z < 0)? 0 : 1].z - r.pos.z) * invdir.z; 
+	if ((tmin > tzmax) || (tzmin > tmax)) 
+        return -1.0f; 
+    if (tzmin > tmin) 
+        tmin = tzmin; 
+    if (tzmax < tmax) 
+        tmax = tzmax;
+	float t = tmin; 
+	if (t < 0) { 
+		t = tmax;
+		if (t < 0) 
+			return -1.0f;
+	} 
+	return t;
+} 
+
+Hit calcNormal(Hit h){
+	if(h.object == 1) {
+		vec3 point = h.ray.pos + h.ray.dir * h.t;
+		h.normal = normalize(point - sceneS[h.id].position); 
+		return h;
+	}if(h.object == 2){
+		h.normal = normalize(sceneT[h.id].normal); 
+		return h;
+	}if(h.object == 3){
+		vec3 point = h.ray.pos + h.ray.dir * h.t;
+		if(abs(point.x - sceneB[h.id].A.x) < 0.0001f)
+			{h.normal = vec3(-1.0f, 0.0f, 0.0f); return h;}
+		if(abs(point.x - sceneB[h.id].B.x) < 0.0001f)
+			{h.normal = vec3(1.0f, 0.0f, 0.0f); return h;}
+		if(abs(point.y - sceneB[h.id].A.y) < 0.0001f)
+			{h.normal = vec3(0.0f, -1.0f, 0.0f); return h;}
+		if(abs(point.y - sceneB[h.id].B.y) < 0.0001f)
+			{h.normal = vec3(0.0f, 1.0f, 0.0f); return h;}
+		if(abs(point.z - sceneB[h.id].A.z) < 0.0001f)
+			{h.normal = vec3(0.0f, 0.0f, -1.0f); return h;}
+		if(abs(point.z - sceneB[h.id].B.z) < 0.0001f)
+			{h.normal = vec3(0.0f, 0.0f, 1.0f); return h;}
+	}
+	return h;
+}
+
+Hit calcTexCoords(Hit h){
+	if(h.object == 1){
+		vec3 tempNormal = sceneS[h.id].rotation * h.normal;
+		h.texCoords.x = (1 + atan(tempNormal.z, tempNormal.x) / 3.14159f) * 0.5; 
+		h.texCoords.y = acos(tempNormal.y) / 3.14159f;
+		return h;
+	} 
+	if(h.object == 3){
+		vec3 point = h.ray.pos + h.ray.dir * h.t;
+		if(h.normal.y != 0.0f){
+			h.texCoords.x = (point - sceneB[h.id].A).x / (sceneB[h.id].B.x - sceneB[h.id].A.x); 
+			h.texCoords.y = (point - sceneB[h.id].A).z / (sceneB[h.id].B.z - sceneB[h.id].A.z);
+			return h;
+		}
+		if(h.normal.x != 0.0f){
+			h.texCoords.x = (point - sceneB[h.id].A).y / (sceneB[h.id].B.y - sceneB[h.id].A.y); 
+			h.texCoords.y = (point - sceneB[h.id].A).z / (sceneB[h.id].B.z - sceneB[h.id].A.z);
+			return h;
+		}
+		if(h.normal.z != 0.0f){
+			h.texCoords.x = (point - sceneB[h.id].A).y / (sceneB[h.id].B.y - sceneB[h.id].A.y); 
+			h.texCoords.y = (point - sceneB[h.id].A).x / (sceneB[h.id].B.x - sceneB[h.id].A.x);
+			return h;
+		}
+	}
+}
+
+Hit calcColor(Hit h){
+	if(h.object == 1){
+		Material sMaterial = materials[sceneS[h.id].matID];
+		if(sMaterial.materialType == 0)
+			h.color = sMaterial.diffuse.xyz;
+		else if (sMaterial.materialType == 1){
+			h = calcTexCoords(h);
+			if(sMaterial.textureIndex == 0)
+				h.color = texture(texture1, h.texCoords).xyz;
+			else
+				h.color = texture(texture2, h.texCoords).xyz;
+		}
+		return h;
+	}
+	if(h.object == 2){
+		Material tMaterial = materials[sceneT[h.id].matID];
+		h.color = tMaterial.diffuse.xyz;
+		return h;
+	}
+	if(h.object == 3){
+		Material bMaterial = materials[sceneB[h.id].matID];
+		if(bMaterial.materialType == 0)
+			h.color = bMaterial.diffuse.xyz; 
+		else if(bMaterial.materialType == 1){
+			h = calcTexCoords(h);
+			if(bMaterial.textureIndex == 0)
+				h.color = texture(texture1, h.texCoords).xyz;
+			else
+				h.color = texture(texture2, h.texCoords).xyz;
+		}
+		return h;
+	}
+	return h;
+}
+
+Hit anyIntersection(Hit h)
+{
+	h.id = -1;
+	h.isHit = false;
+	h.t = -100000.0f;
+	h.object = 0;
+
+	for (int i=0; i<sceneS.length(); i++)
+	{
+		Sphere s = sceneS[i];
+		float temp = intersect_sphere(s, h.ray);
+		vec3 point = h.ray.pos + h.ray.dir * temp;
+		if (temp >= 0.0f && temp <= length(lightPos.xyz - point)){
+			h.isHit = true;
+			return h;
+		}
+	}
+	for (int i=0; i<sceneT.length(); i++)
+	{
+		Triangle t = sceneT[i];
+		float temp = intersect_triangle(t, h.ray);
+		vec3 point = h.ray.pos + h.ray.dir * temp;
+		if (temp >= 0.0f && temp <= length(lightPos.xyz - point)){
+			h.isHit = true;
+			return h;
+		}
+	}
+	for (int i=0; i<sceneB.length(); i++)
+	{
+		Box b = sceneB[i];
+		float temp = intersect_box(b, h.ray);
+		vec3 point = h.ray.pos + h.ray.dir * temp;
+		if (temp >= 0.0f && temp <= length(lightPos.xyz - point)){
+			h.isHit = true;
+			return h;
+		}
+	}
+	return h;
+}
+
+Hit closestIntersection(Hit h)
 {
 	float nearestHit = 100000.0f;
-	bool isHit = false;
-	tempHit.sphere = -1;
-	tempHit.t = 100000.0f;
-	tempHit.ray = h.ray;
-	for (int i=0; i<scene.length(); i++)
+	h.isHit = false;
+	h.id = -1;
+	h.t = 100000.0f;
+	h.object = 0;
+	for (int i=0; i<sceneS.length(); i++)
 	{
-		Sphere s = scene[i];
+		Sphere s = sceneS[i];
 		float temp = intersect_sphere(s, h.ray);
 		if (temp >= 0.0f){
-			isHit = true;
+			h.isHit = true;
 			if(temp < nearestHit){
-				tempHit.sphere = i;
-				tempHit.t = temp;
+				h.id = i;
+				h.object = 1;
+				h.t = temp;
 				nearestHit = temp;
 			}
 		}
 	}
-	return isHit;
+	for (int i=0; i<sceneT.length(); i++)
+	{
+		Triangle t = sceneT[i];
+		float temp = intersect_triangle(t, h.ray);
+		if (temp >= 0.0f){
+			h.isHit = true;
+			if(temp < nearestHit){
+				h.id = i;
+				h.object = 2;
+				h.t = temp;
+				nearestHit = temp;
+			}
+		}
+	}
+	for (int i=0; i<sceneB.length(); i++)
+	{
+		Box b = sceneB[i];
+		float temp = intersect_box(b, h.ray);
+		if (temp >= 0.0f){
+			h.isHit = true;
+			if(temp < nearestHit){
+				h.id = i;
+				h.object = 3;
+				h.t = temp;
+				nearestHit = temp;
+			}
+		}
+	}
+	if(h.isHit){
+		h = calcNormal(h);
+		h = calcColor(h);
+	}
+	return h;
 }
 
 vec3 shade(Hit h)
@@ -89,46 +306,43 @@ vec3 shade(Hit h)
 	vec3 lightVec;
 	vec3 point = h.ray.pos + h.ray.dir * h.t;
 	if (l.w > 0.001f)
-    lightVec = normalize(vec3(l) - point);
+		lightVec = normalize(vec3(l) - point);
 	else
-    lightVec = normalize(vec3(l));
-	vec3 normal = normalize(point - scene[h.sphere].position);
+		lightVec = normalize(vec3(l));
+	vec3 normal = h.normal;
 	vec3 reflectedLightVec = reflect(-lightVec, normal);
 	vec3 viewVec = normalize(eye - (h.ray.pos + h.ray.dir * h.t));
 	float cosphi = max(dot(normal, lightVec), 0.0f);
 	float cospsi_n = pow(max(dot(viewVec, reflectedLightVec), 0.0f), 50.0f);
-	return  0.2f * scene[h.sphere].color + (cosphi * scene[h.sphere].color + cospsi_n);
+	return 0.2f * h.color + (cosphi * h.color + cospsi_n);
 }
 
-vec3 trace(Ray ray){
+vec3 trace(Hit h, int level){
 	vec3 color = vec3(0.0f);
-	Hit hit;
-	hit.ray = ray;
-	hit.t = 100000.0f;
-	hit.sphere = -1;
-	Ray reflectedRay;
-	if (closestIntersection(hit))
-	{
-		rayhit = true;
-		color = shade(tempHit);
-		vec3 lightDir = normalize(lightPos.xyz - (tempHit.ray.pos + tempHit.ray.dir * tempHit.t));
-		Ray shadowray;
-		shadowray.pos = (tempHit.ray.pos + tempHit.ray.dir * tempHit.t) + 0.001f * lightDir;
-		shadowray.dir =  lightDir;
-		Hit shadowhit;
-		shadowhit.ray = shadowray;
-		shadowhit.t =  100000.0f;
-		shadowhit.sphere = -1;
-		if (anyIntersection(shadowhit))
-			color = 0.2f * scene[tempHit.sphere].color;
-		vec3 point = tempHit.ray.pos + tempHit.ray.dir * tempHit.t;
-		vec3 normal = normalize(point - scene[tempHit.sphere].position);
-		tempReflectedRay.pos = (tempHit.ray.pos + tempHit.ray.dir * tempHit.t) + 0.001f * normal;
-		tempReflectedRay.dir = reflect(tempHit.ray.dir, normal);
-	}
-	else
-	{
-		return color;
+	for(int i = 0; i < level; i++){
+		h = closestIntersection(h);
+		if (h.isHit){
+			vec3 lightDir;
+			if(lightPos.w > 0.001)
+				lightDir = normalize(lightPos.xyz - (h.ray.pos + h.ray.dir * h.t));
+			else
+				lightDir = normalize(lightPos.xyz);
+			Hit shadowhit;
+			shadowhit.ray.pos = (h.ray.pos + h.ray.dir * h.t) + 0.001f * lightDir;
+			shadowhit.ray.dir = lightDir;
+			shadowhit = anyIntersection(shadowhit);
+			if (shadowhit.isHit){
+				color += (1.0f/(i+1)) * (0.2f * h.color);
+			}else{
+				color += (1.0/(i+1)) * (shade(h));
+			}
+			vec3 normal = h.normal;
+			h.ray.pos = (h.ray.pos + h.ray.dir * h.t) + 0.001f * normal;
+			h.ray.dir = reflect(h.ray.dir, normal);
+			h.isHit = false;
+		}else{
+			return color;
+		}
 	}
 	return color;
 }
@@ -141,25 +355,19 @@ void main()
 	int x = storePos.x;
 	int y = storePos.y;
 
-	float s = tan(radians(0.5f * 45.f));
+	float s = tan(radians(0.5f * fov));
 	float s_ = s * w / h;
 	vec3 bottomleft = from - zvec - s*yvec - s_*xvec;
 	vec3 steprightvec = xvec * (2.f*s_ / w);
 	vec3 stepupvec = yvec * (2.f*s / h);
 
-	vec3 color = vec3(0.0f);
 	float delta = 0.5f;
 	vec3 dir = ( bottomleft + ( x + delta ) * steprightvec + ( y + delta ) * stepupvec - from );
 
-	Ray ray;
-	ray.pos = from;
-	ray.dir = normalize ( dir );
-	color = trace(ray);
-	if(rayhit){
-		rayhit = false;
-		color += 0.5 * trace(tempReflectedRay);
-	}
-	
+	Hit hit;
+	hit.ray.pos = from;
+	hit.ray.dir = normalize(dir);
+	vec3 color = trace(hit, 4);
 
 	imageStore(image, storePos, vec4(color, 1.0f));
 }
